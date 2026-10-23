@@ -1,0 +1,1492 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Manajemen Operasional 3D Pro</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Three.js for Interactive 3D Wallpaper & Objects -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <!-- Chart.js for Data Visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            300: '#7dd3fc',
+                            500: '#0284c7',
+                            700: '#0369a1',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            overflow-x: hidden;
+            background: #f8fafc;
+            color: #0f172a;
+            user-select: none;
+        }
+
+        /* 3D Dynamic Background Canvas */
+        #live-bg-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* Glassmorphism Bright / Modern Light Theme */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(203, 213, 225, 0.8);
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05), inset 0 1px 1px rgba(255, 255, 255, 0.8);
+            border-radius: 24px;
+        }
+
+        .glass-nav-item {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(203, 213, 225, 0.8);
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .glass-nav-item:active {
+            transform: scale(0.92);
+        }
+
+        /* Glow effects */
+        .glow-sky {
+            box-shadow: 0 8px 20px rgba(14, 165, 233, 0.18);
+        }
+        .glow-emerald {
+            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.18);
+        }
+        .glow-purple {
+            box-shadow: 0 8px 20px rgba(168, 85, 247, 0.18);
+        }
+
+        /* 3D Dynamic Hover Icons */
+        .icon-3d {
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            filter: drop-shadow(0px 4px 8px rgba(14, 165, 233, 0.25));
+        }
+        .icon-3d:hover {
+            transform: translateY(-4px) scale(1.15) rotate(5deg);
+        }
+
+        /* Custom Scrollbar */
+        .custom-scroll::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: rgba(241, 245, 249, 0.8);
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: rgba(14, 165, 233, 0.4);
+            border-radius: 10px;
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Animation */
+        .modal-animate {
+            animation: modalPop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes modalPop {
+            0% { opacity: 0; transform: scale(0.85) translateY(20px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+    <!-- 3D Live Particle Canvas -->
+    <canvas id="live-bg-canvas"></canvas>
+
+    <!-- Top Navigation Header -->
+    <header class="sticky top-0 z-40 px-6 py-3.5 bg-white/75 backdrop-blur-xl border-b border-slate-200/80 flex justify-between items-center shadow-sm">
+        <div class="flex items-center space-x-3">
+            <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-sky-500 via-indigo-500 to-purple-600 flex items-center justify-center text-white text-xl shadow-md glow-sky">
+                <i class="fa-solid fa-cube icon-3d"></i>
+            </div>
+            <div>
+                <h1 id="app-title-display" class="font-black text-lg bg-gradient-to-r from-sky-600 via-teal-600 to-indigo-600 bg-clip-text text-transparent tracking-wide leading-tight">
+                    OPS 3D ULTRA PRO
+                </h1>
+                <p id="user-role-badge" class="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Systems Active
+                </p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <button onclick="toggleThemeVisual()" class="p-2.5 bg-slate-100 hover:bg-slate-200 text-sky-600 rounded-xl border border-slate-200 transition">
+                <i class="fa-solid fa-wand-magic-sparkles text-sm"></i>
+            </button>
+            <button id="logout-btn" onclick="handleLogout()" class="hidden px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-extrabold rounded-xl transition border border-rose-200 flex items-center gap-2">
+                <i class="fa-solid fa-power-off"></i> Logout
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Dynamic Application Container -->
+    <main id="main-content" class="flex-grow container mx-auto px-4 py-6 max-w-5xl pb-28">
+
+        <!-- ================= 1. LOGIN SCREEN ================= -->
+        <div id="login-view" class="max-w-md mx-auto my-12 modal-animate">
+            <div class="glass-card p-8 text-center relative overflow-hidden border border-sky-300 glow-sky">
+                <div class="w-24 h-24 mx-auto mb-6 bg-gradient-to-tr from-sky-500 via-indigo-600 to-purple-600 rounded-3xl flex items-center justify-center shadow-xl shadow-sky-500/20 border border-white/40">
+                    <i class="fa-solid fa-layer-group text-5xl text-white icon-3d"></i>
+                </div>
+                
+                <h2 class="text-2xl font-black text-slate-800 mb-1">Selamat Datang</h2>
+                <p class="text-xs text-slate-500 font-medium mb-6">Sistem Kendali Operasional 3D Terintegrasi Real-Time</p>
+
+                <!-- Role Selector Tabs -->
+                <div class="grid grid-cols-2 gap-2 bg-slate-100 p-1.5 rounded-2xl mb-6 border border-slate-200">
+                    <button id="tab-login-admin" onclick="switchLoginTab('admin')" class="py-2.5 text-xs font-black rounded-xl transition bg-sky-500 text-white shadow-md">
+                        <i class="fa-solid fa-user-shield mr-1.5"></i> Admin
+                    </button>
+                    <button id="tab-login-personil" onclick="switchLoginTab('personil')" class="py-2.5 text-xs font-black rounded-xl transition text-slate-500 hover:text-slate-800">
+                        <i class="fa-solid fa-users mr-1.5"></i> Personil
+                    </button>
+                </div>
+
+                <!-- Admin Form -->
+                <form id="form-login-admin" onsubmit="doAdminLogin(event)" class="space-y-4">
+                    <div class="text-left">
+                        <label class="text-xs font-bold text-slate-700 ml-1">Sandi Akses Admin</label>
+                        <input type="password" id="admin-pass-input" placeholder="Sandi Default: admin" required class="w-full mt-1.5 px-4 py-3.5 rounded-2xl border border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:border-sky-500 text-sm shadow-sm">
+                    </div>
+                    <button type="submit" class="w-full py-4 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white font-black rounded-2xl shadow-lg shadow-sky-500/25 transition transform active:scale-95 text-sm">
+                        Masuk Dashboard Pengelola
+                    </button>
+                </form>
+
+                <!-- Personil Form -->
+                <form id="form-login-personil" onsubmit="doPersonilLogin(event)" class="space-y-4 hidden">
+                    <div class="text-left">
+                        <label class="text-xs font-bold text-slate-700 ml-1">Kode Aktivasi Personil</label>
+                        <input type="text" id="personil-code-input" placeholder="Contoh: JM-001-888" required class="w-full mt-1.5 px-4 py-3.5 rounded-2xl border border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 text-sm uppercase shadow-sm">
+                    </div>
+                    <button type="submit" class="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black rounded-2xl shadow-lg shadow-emerald-500/25 transition transform active:scale-95 text-sm">
+                        Masuk Portal Personil
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- ================= 2. ADMIN DASHBOARD ================= -->
+        <div id="admin-view" class="hidden space-y-6">
+            
+            <!-- SECTION: RINGKASAN & GRAPH -->
+            <div id="admin-section-ringkasan" class="space-y-6">
+                <!-- Top Summary Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div onclick="showDetailModal('saldo-all')" class="glass-card p-5 cursor-pointer border border-emerald-200 hover:border-emerald-400 transition transform hover:-translate-y-1 glow-emerald">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Total Saldo Kas</span>
+                            <div class="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-lg">
+                                <i class="fa-solid fa-wallet icon-3d"></i>
+                            </div>
+                        </div>
+                        <h3 id="admin-stat-saldo" class="text-2xl font-black text-emerald-600 truncate">Rp 0</h3>
+                        <p class="text-[10px] text-slate-500 mt-2">Saldo gabungan seluruh personil aktif</p>
+                    </div>
+
+                    <div onclick="showDetailModal('order-all')" class="glass-card p-5 cursor-pointer border border-sky-200 hover:border-sky-400 transition transform hover:-translate-y-1 glow-sky">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Total Transaksi Order</span>
+                            <div class="w-10 h-10 rounded-2xl bg-sky-100 text-sky-600 flex items-center justify-center text-lg">
+                                <i class="fa-solid fa-cart-shopping icon-3d"></i>
+                            </div>
+                        </div>
+                        <h3 id="admin-stat-order" class="text-2xl font-black text-sky-600 truncate">Rp 0</h3>
+                        <p class="text-[10px] text-slate-500 mt-2">Nilai belanja barang yang diajukan</p>
+                    </div>
+
+                    <div onclick="showDetailModal('setor-all')" class="glass-card p-5 cursor-pointer border border-indigo-200 hover:border-indigo-400 transition transform hover:-translate-y-1 glow-purple">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Total Setoran Diterima</span>
+                            <div class="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-lg">
+                                <i class="fa-solid fa-hand-holding-dollar icon-3d"></i>
+                            </div>
+                        </div>
+                        <h3 id="admin-stat-setor" class="text-2xl font-black text-indigo-600 truncate">Rp 0</h3>
+                        <p class="text-[10px] text-slate-500 mt-2">Total dana masuk terkonfirmasi</p>
+                    </div>
+                </div>
+
+                <!-- Interactive Real-time Chart -->
+                <div class="glass-card p-6 border border-slate-200">
+                    <div class="flex justify-between items-center mb-4">
+                        <h4 class="text-sm font-black text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-chart-line text-sky-600"></i> Analytics Performa Operasional
+                        </h4>
+                        <span class="text-xs text-sky-600 font-bold bg-sky-50 px-3 py-1 rounded-full border border-sky-200">Live Sync</span>
+                    </div>
+                    <div class="h-64 w-full">
+                        <canvas id="analyticsChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Notifikasi Status Cards -->
+                <div class="space-y-3">
+                    <h4 class="text-xs font-extrabold text-slate-500 uppercase tracking-wider ml-1">Peringatan Status Live</h4>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div onclick="showNotifDetail('tidak-setor')" class="glass-card p-3.5 border-l-4 border-l-amber-500 border border-slate-200 cursor-pointer hover:bg-slate-50 transition">
+                            <div class="flex justify-between items-start">
+                                <i class="fa-solid fa-triangle-exclamation text-amber-500 text-lg icon-3d"></i>
+                                <span id="badge-tidak-setor" class="px-2 py-0.5 bg-amber-500 text-white text-[10px] font-black rounded-full">0</span>
+                            </div>
+                            <p class="text-xs font-bold text-slate-800 mt-2">Batas Jam Setor</p>
+                            <p class="text-[9px] text-slate-500">Belum setor hari ini</p>
+                        </div>
+
+                        <div onclick="showNotifDetail('over-limit')" class="glass-card p-3.5 border-l-4 border-l-rose-500 border border-slate-200 cursor-pointer hover:bg-slate-50 transition">
+                            <div class="flex justify-between items-start">
+                                <i class="fa-solid fa-circle-exclamation text-rose-500 text-lg icon-3d"></i>
+                                <span id="badge-over-limit" class="px-2 py-0.5 bg-rose-500 text-white text-[10px] font-black rounded-full">0</span>
+                            </div>
+                            <p class="text-xs font-bold text-slate-800 mt-2">Saldo Over Limit</p>
+                            <p class="text-[9px] text-slate-500">Melebihi ambang batas</p>
+                        </div>
+
+                        <div onclick="navigateAdmin('tugas')" class="glass-card p-3.5 border-l-4 border-l-sky-500 border border-slate-200 cursor-pointer hover:bg-slate-50 transition">
+                            <div class="flex justify-between items-start">
+                                <i class="fa-solid fa-list-check text-sky-500 text-lg icon-3d"></i>
+                                <span id="badge-tugas" class="px-2 py-0.5 bg-sky-500 text-white text-[10px] font-black rounded-full">0</span>
+                            </div>
+                            <p class="text-xs font-bold text-slate-800 mt-2">Tugas Pending</p>
+                            <p class="text-[9px] text-slate-500">Order & setor masuk</p>
+                        </div>
+
+                        <div onclick="showNotifDetail('personil-aktif')" class="glass-card p-3.5 border-l-4 border-l-emerald-500 border border-slate-200 cursor-pointer hover:bg-slate-50 transition">
+                            <div class="flex justify-between items-start">
+                                <i class="fa-solid fa-users text-emerald-500 text-lg icon-3d"></i>
+                                <span id="badge-personil-aktif" class="px-2 py-0.5 bg-emerald-500 text-white text-[10px] font-black rounded-full">0</span>
+                            </div>
+                            <p class="text-xs font-bold text-slate-800 mt-2">Personil Online</p>
+                            <p class="text-[9px] text-slate-500">Status aktif di sistem</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION: TUGAS ADMIN -->
+            <div id="admin-section-tugas" class="hidden space-y-5">
+                <div class="flex border-b border-slate-200 gap-3">
+                    <button id="btn-tab-order-masuk" onclick="switchTugasTab('order')" class="pb-3 px-4 text-xs font-extrabold border-b-2 border-sky-500 text-sky-600 flex items-center gap-2">
+                        <i class="fa-solid fa-cart-arrow-down"></i> Order Masuk (<span id="count-order-masuk">0</span>)
+                    </button>
+                    <button id="btn-tab-setor-masuk" onclick="switchTugasTab('setor')" class="pb-3 px-4 text-xs font-extrabold text-slate-500 hover:text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-vault"></i> Setor Masuk (<span id="count-setor-masuk">0</span>)
+                    </button>
+                </div>
+
+                <div id="content-tugas-order" class="space-y-4">
+                    <div class="flex gap-2">
+                        <button onclick="switchOrderSubTab('checkout')" id="btn-suborder-checkout" class="px-4 py-2 rounded-xl bg-sky-500 text-white text-xs font-bold shadow-md">Check Out Pending</button>
+                        <button onclick="switchOrderSubTab('selesai')" id="btn-suborder-selesai" class="px-4 py-2 rounded-xl bg-slate-200 text-slate-600 text-xs font-bold">Selesai</button>
+                    </div>
+                    <div id="container-order-cards" class="space-y-3"></div>
+                </div>
+
+                <div id="content-tugas-setor" class="hidden space-y-4">
+                    <div class="flex gap-2">
+                        <button onclick="switchSetorSubTab('pending')" id="btn-subsetor-pending" class="px-4 py-2 rounded-xl bg-indigo-500 text-white text-xs font-bold shadow-md">Menunggu Konfirmasi</button>
+                        <button onclick="switchSetorSubTab('terima')" id="btn-subsetor-terima" class="px-4 py-2 rounded-xl bg-slate-200 text-slate-600 text-xs font-bold">Diterima</button>
+                    </div>
+                    <div id="container-setor-cards" class="space-y-3"></div>
+                </div>
+            </div>
+
+            <!-- SECTION: ITEM BARANG -->
+            <div id="admin-section-item" class="hidden space-y-4">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="text-base font-black text-slate-800">Katalog Barang Operasional</h3>
+                        <p class="text-xs text-slate-500">Atur ketersediaan dan penetapan harga item</p>
+                    </div>
+                    <button onclick="openFormItem()" class="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl shadow-md glow-emerald font-black text-xs flex items-center gap-2">
+                        <i class="fa-solid fa-plus icon-3d"></i> Tambah Item Baru
+                    </button>
+                </div>
+                <div id="container-item-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            </div>
+
+            <!-- SECTION: PERSONIL -->
+            <div id="admin-section-personil" class="hidden space-y-4">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="text-base font-black text-slate-800">Manajemen Personil Lapangan</h3>
+                        <p class="text-xs text-slate-500">Kelola anggota, kode aktivasi, dan kirim akses via WhatsApp</p>
+                    </div>
+                    <button onclick="openFormPersonil()" class="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl shadow-md glow-emerald font-black text-xs flex items-center gap-2">
+                        <i class="fa-solid fa-user-plus icon-3d"></i> Registrasi Personil
+                    </button>
+                </div>
+                <div id="container-personil-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            </div>
+
+            <!-- SECTION: LAPORAN -->
+            <div id="admin-section-laporan" class="hidden space-y-5">
+                <div class="glass-card p-5 space-y-4 border border-slate-200">
+                    <h4 class="text-xs font-extrabold text-sky-600 uppercase tracking-wider"><i class="fa-solid fa-filter"></i> Filter Laporan Operasional</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-700">Dari Tanggal</label>
+                            <input type="date" id="filter-date-from" class="w-full mt-1 text-xs p-3 rounded-xl border border-slate-200 bg-white text-slate-800">
+                        </div>
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-700">Sampai Tanggal</label>
+                            <input type="date" id="filter-date-to" class="w-full mt-1 text-xs p-3 rounded-xl border border-slate-200 bg-white text-slate-800">
+                        </div>
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-700">Filter Personil</label>
+                            <select id="filter-personil-id" class="w-full mt-1 text-xs p-3 rounded-xl border border-slate-200 bg-white text-slate-800">
+                                <option value="ALL">Semua Personil</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button onclick="renderLaporan()" class="w-full py-3 bg-sky-500 hover:bg-sky-600 text-white font-black text-xs rounded-xl shadow-md glow-sky">Tampilkan Laporan Rekap</button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="glass-card p-5 space-y-3 border border-slate-200">
+                        <h4 class="text-xs font-black text-sky-600 uppercase border-b border-slate-200 pb-2 flex items-center gap-2"><i class="fa-solid fa-box-archive"></i> Rekap Order Item</h4>
+                        <div id="laporan-order-list" class="space-y-2 max-h-72 overflow-y-auto custom-scroll text-xs"></div>
+                    </div>
+                    <div class="glass-card p-5 space-y-3 border border-slate-200">
+                        <h4 class="text-xs font-black text-indigo-600 uppercase border-b border-slate-200 pb-2 flex items-center gap-2"><i class="fa-solid fa-receipt"></i> Rekap Setoran Dana</h4>
+                        <div id="laporan-setor-list" class="space-y-2 max-h-72 overflow-y-auto custom-scroll text-xs"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION: PENGATURAN ADMIN -->
+            <div id="admin-section-pengaturan" class="hidden space-y-4">
+                <div onclick="openSettingModal('outlet')" class="glass-card p-4 border border-slate-200 flex justify-between items-center cursor-pointer hover:bg-slate-50 transition">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-store icon-3d"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-extrabold text-slate-800">Identitas Outlet & Cabang</h4>
+                            <p id="setting-outlet-name-display" class="text-xs text-slate-500">Outlet Utama Ops 3D</p>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-slate-400"></i>
+                </div>
+
+                <div onclick="openSettingModal('cloud')" class="glass-card p-4 border border-slate-200 flex justify-between items-center cursor-pointer hover:bg-slate-50 transition">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-2xl bg-sky-100 text-sky-600 flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-cloud-arrow-up icon-3d"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-extrabold text-slate-800">Integrasi Cloud Apps Script</h4>
+                            <p class="text-xs text-slate-500">Konfigurasi database & backup data</p>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-slate-400"></i>
+                </div>
+
+                <div onclick="openSettingModal('batas')" class="glass-card p-4 border border-slate-200 flex justify-between items-center cursor-pointer hover:bg-slate-50 transition">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-sliders icon-3d"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-extrabold text-slate-800">Batas Limit & Peringatan</h4>
+                            <p class="text-xs text-slate-500">Pengaturan jam setor & limit nominal saldo</p>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-slate-400"></i>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ================= 3. PERSONIL DASHBOARD ================= -->
+        <div id="personil-view" class="hidden space-y-6">
+            
+            <div class="glass-card p-5 flex justify-between items-center border border-sky-300 glow-sky">
+                <div>
+                    <h3 id="personil-name-display" class="text-lg font-black text-slate-800">Nama Personil</h3>
+                    <p id="personil-code-display" class="text-xs font-bold text-sky-600">Kode: JM-XXX</p>
+                </div>
+                <div>
+                    <span id="personil-kategori-badge" class="px-3 py-1 bg-sky-100 text-sky-700 border border-sky-200 rounded-full text-xs font-black uppercase">Umum</span>
+                </div>
+            </div>
+
+            <!-- SECTION: RINGKASAN PERSONIL -->
+            <div id="personil-section-ringkasan" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="glass-card p-5 text-center border border-emerald-200 glow-emerald">
+                        <p class="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Saldo Akhir Anda</p>
+                        <h2 id="personil-stat-saldo" class="text-2xl font-black text-emerald-600 mt-2">Rp 0</h2>
+                        <p class="text-[10px] text-slate-500 mt-1">( Saldo Awal + Total Order - Total Setor )</p>
+                    </div>
+
+                    <div class="glass-card p-5 text-center border border-sky-200 glow-sky">
+                        <p class="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Total Belanja Order</p>
+                        <h2 id="personil-stat-order" class="text-2xl font-black text-sky-600 mt-2">Rp 0</h2>
+                    </div>
+
+                    <div class="glass-card p-5 text-center border border-indigo-200 glow-purple">
+                        <p class="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Total Setor Disetujui</p>
+                        <h2 id="personil-stat-setor" class="text-2xl font-black text-indigo-600 mt-2">Rp 0</h2>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION: ORDER FORM PERSONIL -->
+            <div id="personil-section-order" class="hidden space-y-4">
+                <div class="glass-card p-6 space-y-5 border border-slate-200">
+                    <h3 class="text-base font-black text-slate-800 border-b border-slate-200 pb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-cart-plus text-sky-600"></i> Form Pengajuan Order Barang
+                    </h3>
+                    
+                    <div>
+                        <label class="text-xs font-bold text-slate-700">Waktu Order (WIB)</label>
+                        <input type="datetime-local" id="personil-order-date" class="w-full mt-1.5 px-4 py-3 rounded-2xl border border-slate-200 bg-white text-slate-800 text-xs shadow-sm">
+                    </div>
+
+                    <!-- Search Box -->
+                    <div class="relative">
+                        <label class="text-xs font-bold text-slate-700">Cari & Pilih Barang</label>
+                        <input type="text" id="personil-item-search" oninput="handleItemSearch(this.value)" placeholder="Ketik nama item barang..." class="w-full mt-1.5 px-4 py-3 rounded-2xl border border-slate-200 bg-white text-slate-800 text-xs focus:border-sky-500 focus:outline-none shadow-sm">
+                        <div id="item-search-results" class="absolute left-0 right-0 top-full mt-2 bg-white border border-slate-200 rounded-2xl shadow-xl z-20 hidden max-h-52 overflow-y-auto custom-scroll"></div>
+                    </div>
+
+                    <!-- Cart Selected Table -->
+                    <div>
+                        <label class="text-xs font-bold text-slate-700">Daftar Barang Terpilih</label>
+                        <div id="selected-items-container" class="mt-2 space-y-2 border border-slate-200 rounded-2xl p-3 bg-slate-50 min-h-[100px]">
+                            <p id="empty-items-placeholder" class="text-xs text-slate-400 text-center py-6">Belum ada item barang yang dipilih.</p>
+                        </div>
+                    </div>
+
+                    <div class="p-4 bg-sky-50 border border-sky-200 rounded-2xl flex justify-between items-center text-xs font-bold">
+                        <span class="text-slate-600">Total Kuantitas: <span id="summary-total-qty" class="text-sky-600 font-black">0</span></span>
+                        <span class="text-slate-600">Total Nominal: <span id="summary-total-price" class="text-emerald-600 font-black">Rp 0</span></span>
+                    </div>
+
+                    <div class="flex gap-3">
+                        <button onclick="submitPersonilOrder()" class="flex-1 py-3.5 bg-sky-500 hover:bg-sky-600 text-white font-black text-xs rounded-2xl shadow-md glow-sky">Kirim Order Barang</button>
+                        <button onclick="resetOrderForm()" class="px-5 py-3.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-2xl">Reset</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION: SETOR FORM PERSONIL -->
+            <div id="personil-section-setor" class="hidden space-y-4">
+                <div class="glass-card p-6 space-y-5 border border-slate-200">
+                    <h3 class="text-base font-black text-slate-800 border-b border-slate-200 pb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-hand-holding-dollar text-indigo-600"></i> Form Input Setoran Hasil Penjualan
+                    </h3>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-xs font-bold text-slate-700">Tanggal</label>
+                            <input type="text" id="personil-setor-date-display" readonly class="w-full mt-1.5 px-4 py-3 text-xs rounded-2xl border border-slate-200 bg-slate-100 text-slate-600 font-bold">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-700">Nama Personil</label>
+                            <input type="text" id="personil-setor-name-display" readonly class="w-full mt-1.5 px-4 py-3 text-xs rounded-2xl border border-slate-200 bg-slate-100 text-slate-600 font-bold">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-xs font-bold text-slate-700">Total Omset Penjualan (Rp)</label>
+                        <input type="number" id="personil-setor-omset" oninput="calculateSetorFormula()" placeholder="0" class="w-full mt-1.5 px-4 py-3.5 rounded-2xl border border-slate-200 bg-white text-slate-800 text-sm font-black focus:border-indigo-500 focus:outline-none shadow-sm">
+                    </div>
+
+                    <div>
+                        <label class="text-xs font-bold text-slate-700">Persentase Bagi Hasil Personil (%)</label>
+                        <input type="number" id="personil-setor-persen" oninput="calculateSetorFormula()" placeholder="10" class="w-full mt-1.5 px-4 py-3 rounded-2xl border border-slate-200 bg-white text-slate-800 text-xs focus:border-indigo-500 focus:outline-none shadow-sm">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-500 uppercase">Penghasilan Personil</label>
+                            <input type="text" id="personil-setor-penghasilan" readonly value="Rp 0" class="w-full mt-1 bg-transparent text-emerald-600 text-sm font-black focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-500 uppercase">Setor ke Pengelola</label>
+                            <input type="text" id="personil-setor-final" readonly value="Rp 0" class="w-full mt-1 bg-transparent text-indigo-600 text-sm font-black focus:outline-none">
+                        </div>
+                    </div>
+
+                    <button onclick="submitPersonilSetor()" class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-2xl shadow-lg glow-purple">Kirim Konfirmasi Setoran</button>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Navigation Bar Admin (Sticky Bottom Horizontal Scroll) -->
+    <nav id="nav-admin-bottom" class="fixed bottom-0 left-0 right-0 z-40 bg-white/85 backdrop-blur-xl border-t border-slate-200 p-2.5 overflow-x-auto no-scrollbar hidden shadow-lg">
+        <div class="flex items-center space-x-2.5 min-w-max mx-auto px-2">
+            <button id="nav-item-ringkasan" onclick="navigateAdmin('ringkasan')" class="glass-nav-item flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-500 text-white shadow-md font-black text-xs">
+                <i class="fa-solid fa-chart-pie text-sm icon-3d"></i> RINGKASAN
+            </button>
+            <button id="nav-item-tugas" onclick="navigateAdmin('tugas')" class="glass-nav-item flex items-center gap-2 px-4 py-2.5 rounded-2xl text-slate-600 hover:text-slate-900 font-bold text-xs">
+                <i class="fa-solid fa-list-check text-sm text-sky-600 icon-3d"></i> TUGAS
+            </button>
+            <button id="nav-item-item" onclick="navigateAdmin('item')" class="glass-nav-item flex items-center gap-2 px-4 py-2.5 rounded-2xl text-slate-600 hover:text-slate-900 font-bold text-xs">
+                <i class="fa-solid fa-box-open text-sm text-amber-500 icon-3d"></i> ITEM
+            </button>
+            <button id="nav-item-personil" onclick="navigateAdmin('personil')" class="glass-nav-item flex items-center gap-2 px-4 py-2.5 rounded-2xl text-slate-600 hover:text-slate-900 font-bold text-xs">
+                <i class="fa-solid fa-users text-sm text-indigo-600 icon-3d"></i> PERSONIL
+            </button>
+            <button id="nav-item-laporan" onclick="navigateAdmin('laporan')" class="glass-nav-item flex items-center gap-2 px-4 py-2.5 rounded-2xl text-slate-600 hover:text-slate-900 font-bold text-xs">
+                <i class="fa-solid fa-file-invoice text-sm text-purple-600 icon-3d"></i> LAPORAN
+            </button>
+            <button id="nav-item-pengaturan" onclick="navigateAdmin('pengaturan')" class="glass-nav-item flex items-center gap-2 px-4 py-2.5 rounded-2xl text-slate-600 hover:text-slate-900 font-bold text-xs">
+                <i class="fa-solid fa-gear text-sm text-slate-500 icon-3d"></i> PENGATURAN
+            </button>
+        </div>
+    </nav>
+
+    <!-- Navigation Bar Personil -->
+    <nav id="nav-personil-bottom" class="fixed bottom-0 left-0 right-0 z-40 bg-white/85 backdrop-blur-xl border-t border-slate-200 py-2.5 px-4 hidden shadow-lg">
+        <div class="grid grid-cols-3 gap-3 max-w-md mx-auto">
+            <button id="nav-p-ringkasan" onclick="navigatePersonil('ringkasan')" class="glass-nav-item py-2.5 rounded-2xl flex flex-col items-center text-emerald-600 font-bold text-[11px]">
+                <i class="fa-solid fa-chart-line text-base icon-3d mb-0.5"></i> RINGKASAN
+            </button>
+            <button id="nav-p-order" onclick="navigatePersonil('order')" class="glass-nav-item py-2.5 rounded-2xl flex flex-col items-center text-slate-600 font-bold text-[11px]">
+                <i class="fa-solid fa-cart-plus text-base text-sky-600 icon-3d mb-0.5"></i> ORDER
+            </button>
+            <button id="nav-p-setor" onclick="navigatePersonil('setor')" class="glass-nav-item py-2.5 rounded-2xl flex flex-col items-center text-slate-600 font-bold text-[11px]">
+                <i class="fa-solid fa-hand-holding-dollar text-base text-indigo-600 icon-3d mb-0.5"></i> SETOR
+            </button>
+        </div>
+    </nav>
+
+    <!-- Global Modal Popup -->
+    <div id="global-modal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div id="modal-card-content" class="glass-card w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto custom-scroll modal-animate relative border border-slate-200 shadow-2xl">
+            <button onclick="closeModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 text-xs font-bold">✕</button>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <!-- Application Logic Script -->
+    <script>
+        /* ================= APP STATE ================= */
+        const APP_STATE = {
+            currentUser: null,
+            settings: {
+                outletName: 'Outlet Utama Ops 3D',
+                gasUrl: '',
+                batasNominal: 5000000,
+                batasJamSetor: 18,
+            },
+            items: [],
+            personils: [],
+            orders: [],
+            setors: [],
+            selectedCartItems: []
+        };
+
+        let chartInstance = null;
+
+        /* ================= THREE.JS LIVE BG WALLPAPER ================= */
+        function init3DBackground() {
+            const canvas = document.getElementById('live-bg-canvas');
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
+            
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+
+            // Create Animated Wave Network
+            const geometry = new THREE.PlaneGeometry(35, 35, 40, 40);
+            const material = new THREE.MeshPhongMaterial({
+                color: 0x0284c7,
+                wireframe: true,
+                transparent: true,
+                opacity: 0.12
+            });
+
+            const waveMesh = new THREE.Mesh(geometry, material);
+            waveMesh.rotation.x = -Math.PI / 2.8;
+            scene.add(waveMesh);
+
+            // Floating Light Orbs
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
+            scene.add(ambientLight);
+
+            const pointLight = new THREE.PointLight(0x38bdf8, 1.5);
+            pointLight.position.set(10, 10, 10);
+            scene.add(pointLight);
+
+            camera.position.z = 9;
+
+            let clock = new THREE.Clock();
+
+            function animate() {
+                requestAnimationFrame(animate);
+                const t = clock.getElapsedTime();
+
+                const pos = geometry.attributes.position;
+                for (let i = 0; i < pos.count; i++) {
+                    const u = pos.getX(i);
+                    const v = pos.getY(i);
+                    const z = Math.sin(u * 0.4 + t * 1.2) * 0.5 + Math.cos(v * 0.4 + t * 1.2) * 0.5;
+                    pos.setZ(i, z);
+                }
+                geometry.attributes.position.needsUpdate = true;
+                waveMesh.rotation.z = t * 0.03;
+
+                renderer.render(scene, camera);
+            }
+
+            animate();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+
+        /* ================= DATA MANAGEMENT ================= */
+        function saveToStorage() {
+            localStorage.setItem('OPS_3D_PRO_DATA', JSON.stringify({
+                settings: APP_STATE.settings,
+                items: APP_STATE.items,
+                personils: APP_STATE.personils,
+                orders: APP_STATE.orders,
+                setors: APP_STATE.setors
+            }));
+            updateAllUI();
+        }
+
+        function loadFromStorage() {
+            const data = localStorage.getItem('OPS_3D_PRO_DATA');
+            if (data) {
+                const parsed = JSON.parse(data);
+                APP_STATE.settings = parsed.settings || APP_STATE.settings;
+                APP_STATE.items = parsed.items || [];
+                APP_STATE.personils = parsed.personils || [];
+                APP_STATE.orders = parsed.orders || [];
+                APP_STATE.setors = parsed.setors || [];
+            } else {
+                // Seed initial data
+                APP_STATE.items = [
+                    { id: '1', name: 'Barang A Premium', price: 75000 },
+                    { id: '2', name: 'Barang B Reguler', price: 35000 },
+                    { id: '3', name: 'Paket Hemat C', price: 120000 }
+                ];
+                APP_STATE.personils = [
+                    { id: '1', name: 'Budi Santoso', phone: '08123456789', address: 'Jakarta', lapak: 'Lapak Utama', category: 'umum', activationCode: 'JM-001-888', initialSaldo: 250000, active: true }
+                ];
+                saveToStorage();
+            }
+        }
+
+        /* ================= INITIALIZATION ================= */
+        window.onload = function() {
+            init3DBackground();
+            loadFromStorage();
+            initChart();
+            
+            const now = new Date();
+            const localIso = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+            if (document.getElementById('personil-order-date')) {
+                document.getElementById('personil-order-date').value = localIso;
+            }
+        };
+
+        /* ================= AUTHENTICATION ================= */
+        function switchLoginTab(role) {
+            document.getElementById('tab-login-admin').className = role === 'admin' 
+                ? 'py-2.5 text-xs font-black rounded-xl transition bg-sky-500 text-white shadow-lg'
+                : 'py-2.5 text-xs font-black rounded-xl transition text-slate-400 hover:text-white';
+            
+            document.getElementById('tab-login-personil').className = role === 'personil' 
+                ? 'py-2.5 text-xs font-black rounded-xl transition bg-emerald-500 text-slate-950 shadow-lg'
+                : 'py-2.5 text-xs font-black rounded-xl transition text-slate-400 hover:text-white';
+
+            document.getElementById('form-login-admin').classList.toggle('hidden', role !== 'admin');
+            document.getElementById('form-login-personil').classList.toggle('hidden', role !== 'personil');
+        }
+
+        function doAdminLogin(e) {
+            e.preventDefault();
+            const pass = document.getElementById('admin-pass-input').value;
+            if (pass === 'admin' || pass === '1234') {
+                APP_STATE.currentUser = { role: 'admin', name: 'Administrator' };
+                document.getElementById('login-view').classList.add('hidden');
+                document.getElementById('admin-view').classList.remove('hidden');
+                document.getElementById('nav-admin-bottom').classList.remove('hidden');
+                document.getElementById('logout-btn').classList.remove('hidden');
+                updateAllUI();
+            } else {
+                showCustomAlert('Sandi Admin Salah! (Sandi default: admin)');
+            }
+        }
+
+        function doPersonilLogin(e) {
+            e.preventDefault();
+            const code = document.getElementById('personil-code-input').value.trim().toUpperCase();
+            const found = APP_STATE.personils.find(p => p.activationCode.toUpperCase() === code);
+            
+            if (found) {
+                found.active = true;
+                saveToStorage();
+                APP_STATE.currentUser = { role: 'personil', data: found };
+                document.getElementById('login-view').classList.add('hidden');
+                document.getElementById('personil-view').classList.remove('hidden');
+                document.getElementById('nav-personil-bottom').classList.remove('hidden');
+                document.getElementById('logout-btn').classList.remove('hidden');
+                
+                document.getElementById('personil-name-display').innerText = found.name;
+                document.getElementById('personil-code-display').innerText = 'Kode: ' + found.activationCode;
+                document.getElementById('personil-kategori-badge').innerText = found.category;
+                
+                document.getElementById('personil-setor-name-display').value = found.name;
+                document.getElementById('personil-setor-date-display').value = new Date().toLocaleDateString('id-ID');
+                
+                checkPersonilWarnings(found);
+                updateAllUI();
+            } else {
+                showCustomAlert('Kode Aktivasi Personil tidak ditemukan!');
+            }
+        }
+
+        function handleLogout() {
+            if (APP_STATE.currentUser && APP_STATE.currentUser.role === 'personil') {
+                const found = APP_STATE.personils.find(p => p.id === APP_STATE.currentUser.data.id);
+                if (found) found.active = false;
+                saveToStorage();
+            }
+            APP_STATE.currentUser = null;
+            document.getElementById('admin-view').classList.add('hidden');
+            document.getElementById('personil-view').classList.add('hidden');
+            document.getElementById('nav-admin-bottom').classList.add('hidden');
+            document.getElementById('nav-personil-bottom').classList.add('hidden');
+            document.getElementById('logout-btn').classList.add('hidden');
+            document.getElementById('login-view').classList.remove('hidden');
+        }
+
+        /* ================= NAVIGATION CONTROLLERS ================= */
+        function navigateAdmin(sec) {
+            const sections = ['ringkasan', 'tugas', 'item', 'personil', 'laporan', 'pengaturan'];
+            sections.forEach(s => {
+                const el = document.getElementById('admin-section-' + s);
+                if (el) el.classList.add('hidden');
+            });
+            document.getElementById('admin-section-' + sec).classList.remove('hidden');
+
+            sections.forEach(s => {
+                const btn = document.getElementById('nav-item-' + s);
+                if (btn) {
+                    if (s === sec) {
+                        btn.className = 'glass-nav-item flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-sky-500 text-white shadow-md font-black text-xs';
+                    } else {
+                        btn.className = 'glass-nav-item flex items-center gap-2 px-4 py-2.5 rounded-2xl text-slate-600 hover:text-slate-900 font-bold text-xs';
+                    }
+                }
+            });
+        }
+
+        function navigatePersonil(sec) {
+            ['ringkasan', 'order', 'setor'].forEach(s => {
+                document.getElementById('personil-section-' + s).classList.add('hidden');
+            });
+            document.getElementById('personil-section-' + sec).classList.remove('hidden');
+        }
+
+        /* ================= SALDO CALCULATOR ================= */
+        function getPersonilSaldo(personilId) {
+            const personil = APP_STATE.personils.find(p => p.id === personilId);
+            if (!personil) return 0;
+            
+            const totalOrder = APP_STATE.orders
+                .filter(o => o.personilId === personilId && o.status === 'selesai')
+                .reduce((acc, curr) => acc + curr.totalPrice, 0);
+
+            const totalSetor = APP_STATE.setors
+                .filter(s => s.personilId === personilId && s.status === 'terima')
+                .reduce((acc, curr) => acc + curr.nominalSetor, 0);
+
+            return (personil.initialSaldo || 0) + totalOrder - totalSetor;
+        }
+
+        /* ================= CHART ANALYTICS ================= */
+        function initChart() {
+            const ctx = document.getElementById('analyticsChart').getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
+                    datasets: [
+                        {
+                            label: 'Total Order (Rp)',
+                            data: [1200000, 1900000, 3000000, 2500000, 4200000, 5100000],
+                            borderColor: '#0284c7',
+                            backgroundColor: 'rgba(2, 132, 199, 0.08)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Setoran Kas (Rp)',
+                            data: [1000000, 1700000, 2800000, 2200000, 3900000, 4800000],
+                            borderColor: '#6366f1',
+                            backgroundColor: 'rgba(99, 102, 241, 0.08)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#475569', font: { family: 'Plus Jakarta Sans', weight: 'bold' } } }
+                    },
+                    scales: {
+                        x: { ticks: { color: '#64748b' }, grid: { display: false } },
+                        y: { ticks: { color: '#64748b' }, grid: { color: 'rgba(203, 213, 225, 0.4)' } }
+                    }
+                }
+            });
+        }
+
+        /* ================= UI RENDER ENGINE ================= */
+        function updateAllUI() {
+            let totalSaldoAll = 0;
+            APP_STATE.personils.forEach(p => totalSaldoAll += getPersonilSaldo(p.id));
+
+            const totalOrderAll = APP_STATE.orders.reduce((acc, curr) => acc + curr.totalPrice, 0);
+            const totalSetorAll = APP_STATE.setors.reduce((acc, curr) => acc + curr.nominalSetor, 0);
+
+            if (document.getElementById('admin-stat-saldo'))
+                document.getElementById('admin-stat-saldo').innerText = formatRp(totalSaldoAll);
+            if (document.getElementById('admin-stat-order'))
+                document.getElementById('admin-stat-order').innerText = formatRp(totalOrderAll);
+            if (document.getElementById('admin-stat-setor'))
+                document.getElementById('admin-stat-setor').innerText = formatRp(totalSetorAll);
+
+            // Badges calculation
+            let overLimitCount = 0;
+            let lateSetorCount = 0;
+            const currentHour = new Date().getHours();
+
+            APP_STATE.personils.forEach(p => {
+                if (getPersonilSaldo(p.id) > APP_STATE.settings.batasNominal) overLimitCount++;
+                const hasSetorToday = APP_STATE.setors.some(s => s.personilId === p.id && new Date(s.timestamp).toDateString() === new Date().toDateString());
+                if (!hasSetorToday && currentHour >= APP_STATE.settings.batasJamSetor) lateSetorCount++;
+            });
+
+            const pendingOrders = APP_STATE.orders.filter(o => o.status === 'checkout').length;
+            const pendingSetors = APP_STATE.setors.filter(s => s.status === 'pending').length;
+            const activePersonils = APP_STATE.personils.filter(p => p.active).length;
+
+            document.getElementById('badge-tidak-setor').innerText = lateSetorCount;
+            document.getElementById('badge-over-limit').innerText = overLimitCount;
+            document.getElementById('badge-tugas').innerText = pendingOrders + pendingSetors;
+            document.getElementById('badge-personil-aktif').innerText = activePersonils;
+
+            document.getElementById('count-order-masuk').innerText = pendingOrders;
+            document.getElementById('count-setor-masuk').innerText = pendingSetors;
+
+            renderItemModule();
+            renderPersonilModule();
+            renderTugasModule();
+
+            if (APP_STATE.currentUser && APP_STATE.currentUser.role === 'personil') {
+                const pid = APP_STATE.currentUser.data.id;
+                const pSaldo = getPersonilSaldo(pid);
+                const pOrder = APP_STATE.orders.filter(o => o.personilId === pid).reduce((a, c) => a + c.totalPrice, 0);
+                const pSetor = APP_STATE.setors.filter(s => s.personilId === pid).reduce((a, c) => a + c.nominalSetor, 0);
+
+                document.getElementById('personil-stat-saldo').innerText = formatRp(pSaldo);
+                document.getElementById('personil-stat-order').innerText = formatRp(pOrder);
+                document.getElementById('personil-stat-setor').innerText = formatRp(pSetor);
+            }
+        }
+
+        /* ================= ITEM MODULE ================= */
+        function openFormItem(editId = null) {
+            const item = editId ? APP_STATE.items.find(i => i.id === editId) : null;
+            const html = `
+                <h3 class="text-sm font-black text-slate-800 mb-4">${item ? 'Edit Item Barang' : 'Tambah Item Barang Baru'}</h3>
+                <form onsubmit="saveItem(event, '${editId || ''}')" class="space-y-4">
+                    <div>
+                        <label class="text-xs font-bold text-slate-700">Nama Barang / Produk</label>
+                        <input type="text" id="input-item-name" value="${item ? item.name : ''}" required class="w-full mt-1.5 p-3 text-xs border border-slate-200 rounded-xl bg-white text-slate-800 shadow-sm">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-700">Harga Jual Satuan (Rp)</label>
+                        <input type="number" id="input-item-price" value="${item ? item.price : ''}" required class="w-full mt-1.5 p-3 text-xs border border-slate-200 rounded-xl bg-white text-slate-800 shadow-sm">
+                    </div>
+                    <button type="submit" class="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs rounded-xl shadow-md">Simpan Produk</button>
+                </form>
+            `;
+            showModal(html);
+        }
+
+        function saveItem(e, id) {
+            e.preventDefault();
+            const name = document.getElementById('input-item-name').value;
+            const price = parseFloat(document.getElementById('input-item-price').value);
+
+            if (id) {
+                const item = APP_STATE.items.find(i => i.id === id);
+                if (item) { item.name = name; item.price = price; }
+            } else {
+                APP_STATE.items.push({ id: Date.now().toString(), name, price });
+            }
+            saveToStorage();
+            closeModal();
+        }
+
+        function deleteItem(id) {
+            if (confirm('Hapus item barang ini?')) {
+                APP_STATE.items = APP_STATE.items.filter(i => i.id !== id);
+                saveToStorage();
+            }
+        }
+
+        function renderItemModule() {
+            const container = document.getElementById('container-item-list');
+            if (!container) return;
+            container.innerHTML = APP_STATE.items.map(i => `
+                <div class="glass-card p-4 flex justify-between items-center border border-slate-200 hover:border-sky-300 transition shadow-sm">
+                    <div>
+                        <h4 class="text-xs font-black text-slate-800">${i.name}</h4>
+                        <p class="text-xs font-bold text-emerald-600 mt-1">${formatRp(i.price)}</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="openFormItem('${i.id}')" class="p-2 bg-sky-50 text-sky-600 hover:bg-sky-100 border border-sky-200 rounded-xl text-xs transition"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteItem('${i.id}')" class="p-2 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 rounded-xl text-xs transition"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        /* ================= PERSONIL MODULE ================= */
+        function openFormPersonil(editId = null) {
+            const p = editId ? APP_STATE.personils.find(item => item.id === editId) : null;
+            const html = `
+                <h3 class="text-sm font-black text-slate-800 mb-4">${p ? 'Edit Personil' : 'Registrasi Personil Baru'}</h3>
+                <form onsubmit="savePersonil(event, '${editId || ''}')" class="space-y-3">
+                    <div>
+                        <label class="text-xs font-bold text-slate-700">Nama Lengkap</label>
+                        <input type="text" id="p-name" value="${p ? p.name : ''}" required class="w-full mt-1 p-2.5 text-xs border border-slate-200 rounded-xl bg-white text-slate-800 shadow-sm">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-700">Nomor Telepon/WA (Contoh: 08123456789)</label>
+                        <input type="text" id="p-phone" value="${p ? p.phone : ''}" placeholder="08xxxxxxxxxx" required class="w-full mt-1 p-2.5 text-xs border border-slate-200 rounded-xl bg-white text-slate-800 shadow-sm">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-700">Lokasi Lapak/Pos</label>
+                        <input type="text" id="p-lapak" value="${p ? p.lapak : ''}" class="w-full mt-1 p-2.5 text-xs border border-slate-200 rounded-xl bg-white text-slate-800 shadow-sm">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-700">Kategori Personil</label>
+                        <select id="p-category" class="w-full mt-1 p-2.5 text-xs border border-slate-200 rounded-xl bg-white text-slate-800 shadow-sm">
+                            <option value="umum" ${p && p.category === 'umum' ? 'selected' : ''}>Umum</option>
+                            <option value="upline" ${p && p.category === 'upline' ? 'selected' : ''}>Upline</option>
+                            <option value="downline" ${p && p.category === 'downline' ? 'selected' : ''}>Downline</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-700">Kode Aktivasi</label>
+                        <input type="text" id="p-code" value="${p ? p.activationCode : 'JM-' + Math.floor(100+Math.random()*900) + '-888'}" required class="w-full mt-1 p-2.5 text-xs border border-slate-200 rounded-xl bg-white text-slate-800 uppercase shadow-sm">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-700">Saldo Modal Awal (Rp)</label>
+                        <input type="number" id="p-saldo-awal" value="${p ? p.initialSaldo : 0}" required class="w-full mt-1 p-2.5 text-xs border border-slate-200 rounded-xl bg-white text-slate-800 shadow-sm">
+                    </div>
+                    <button type="submit" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl shadow-md">Simpan Personil</button>
+                </form>
+            `;
+            showModal(html);
+        }
+
+        function savePersonil(e, id) {
+            e.preventDefault();
+            const data = {
+                name: document.getElementById('p-name').value,
+                phone: document.getElementById('p-phone').value,
+                lapak: document.getElementById('p-lapak').value,
+                category: document.getElementById('p-category').value,
+                activationCode: document.getElementById('p-code').value.toUpperCase(),
+                initialSaldo: parseFloat(document.getElementById('p-saldo-awal').value) || 0
+            };
+
+            if (id) {
+                const p = APP_STATE.personils.find(x => x.id === id);
+                if (p) Object.assign(p, data);
+            } else {
+                data.id = Date.now().toString();
+                data.active = false;
+                APP_STATE.personils.push(data);
+            }
+            saveToStorage();
+            closeModal();
+        }
+
+        function deletePersonil(id) {
+            if (confirm('Hapus personil ini dari sistem?')) {
+                APP_STATE.personils = APP_STATE.personils.filter(p => p.id !== id);
+                saveToStorage();
+            }
+        }
+
+        function renderPersonilModule() {
+            const container = document.getElementById('container-personil-list');
+            if (!container) return;
+            container.innerHTML = APP_STATE.personils.map(p => {
+                const saldo = getPersonilSaldo(p.id);
+                return `
+                    <div class="glass-card p-4 space-y-3 border border-slate-200 hover:border-indigo-300 transition shadow-sm">
+                        <div class="flex justify-between items-start pb-2 border-b border-slate-200">
+                            <div>
+                                <h4 class="text-xs font-black text-slate-800">${p.name}</h4>
+                                <p class="text-[10px] text-slate-500">${p.lapak || 'Tanpa Lapak'} • <span class="font-bold text-sky-600 uppercase">${p.category}</span></p>
+                                <p class="text-[10px] font-medium text-slate-500 mt-0.5"><i class="fa-solid fa-phone text-[9px] text-emerald-600 mr-1"></i>${p.phone || 'Belum ada No WA'}</p>
+                            </div>
+                            <button onclick="copyCode('${p.activationCode}')" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-sky-700 text-[10px] font-bold rounded-lg border border-slate-200 transition">
+                                <i class="fa-solid fa-key mr-1"></i>${p.activationCode}
+                            </button>
+                        </div>
+
+                        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex justify-between items-center">
+                            <span class="text-[11px] font-bold text-slate-500">Saldo Kas Akhir:</span>
+                            <span class="text-xs font-black text-emerald-600">${formatRp(saldo)}</span>
+                        </div>
+
+                        <div class="flex justify-between items-center pt-2 border-t border-slate-200 gap-2">
+                            <button onclick="sharePersonilWA('${p.id}')" class="flex-1 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 text-[11px] font-black rounded-lg transition flex items-center justify-center gap-1.5">
+                                <i class="fa-brands fa-whatsapp text-sm text-emerald-600"></i> Kirim Akses WA
+                            </button>
+                            <div class="flex gap-1.5">
+                                <button onclick="openFormPersonil('${p.id}')" class="px-3 py-1.5 bg-sky-50 text-sky-600 hover:bg-sky-100 border border-sky-200 text-xs font-bold rounded-lg transition">Edit</button>
+                                <button onclick="deletePersonil('${p.id}')" class="px-3 py-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 text-xs font-bold rounded-lg transition">Hapus</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function sharePersonilWA(personilId) {
+            const p = APP_STATE.personils.find(item => item.id === personilId);
+            if (!p) return;
+
+            if (!p.phone || p.phone.trim() === '') {
+                showCustomAlert('Nomor Telepon/WA Personil belum terdaftar! Silakan edit personil untuk mengisi nomor WA.');
+                return;
+            }
+
+            // Clean phone number (format Indonesian 08xx to 628xx)
+            let cleanPhone = p.phone.replace(/[^0-9]/g, '');
+            if (cleanPhone.startsWith('0')) {
+                cleanPhone = '62' + cleanPhone.slice(1);
+            }
+
+            const appName = APP_STATE.settings.outletName || 'OPS 3D ULTRA PRO';
+            const message = `Halo *${p.name}*,\n\nBerikut adalah Kode Akses Aktivasi Personil Anda untuk masuk ke sistem *${appName}*:\n\n🔑 Kode Aktivasi: *${p.activationCode}*\n\nSilakan gunakan kode di atas pada Portal Personil untuk mengelola order dan setoran. Terima kasih!`;
+
+            const encodedMessage = encodeURIComponent(message);
+            const waUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
+
+            window.open(waUrl, '_blank');
+        }
+
+        function copyCode(code) {
+            document.execCommand('copy');
+            showCustomAlert('Kode Aktivasi disalin: ' + code);
+        }
+
+        /* ================= TUGAS CONTROLLER ================= */
+        let currentTugasTab = 'order';
+        let currentOrderSubTab = 'checkout';
+        let currentSetorSubTab = 'pending';
+
+        function switchTugasTab(tab) {
+            currentTugasTab = tab;
+            document.getElementById('content-tugas-order').classList.toggle('hidden', tab !== 'order');
+            document.getElementById('content-tugas-setor').classList.toggle('hidden', tab !== 'setor');
+            renderTugasModule();
+        }
+
+        function switchOrderSubTab(sub) { currentOrderSubTab = sub; renderTugasModule(); }
+        function switchSetorSubTab(sub) { currentSetorSubTab = sub; renderTugasModule(); }
+
+        function renderTugasModule() {
+            const containerOrders = document.getElementById('container-order-cards');
+            if (containerOrders) {
+                const filtered = APP_STATE.orders.filter(o => currentOrderSubTab === 'checkout' ? o.status === 'checkout' : o.status === 'selesai');
+                containerOrders.innerHTML = filtered.map(o => `
+                    <div class="glass-card p-4 space-y-3 border border-slate-200 hover:border-sky-300 transition shadow-sm">
+                        <div class="flex justify-between items-start pb-2 border-b border-slate-200">
+                            <div>
+                                <h4 class="text-xs font-black text-slate-800">${o.personilName}</h4>
+                                <p class="text-[10px] text-slate-500">${o.date}</p>
+                            </div>
+                            <span class="text-xs font-black text-sky-600 bg-sky-50 px-2.5 py-1 rounded-lg border border-sky-200">${formatRp(o.totalPrice)}</span>
+                        </div>
+                        <div class="flex gap-2 pt-1 border-t border-slate-200">
+                            ${currentOrderSubTab === 'checkout' ? `<button onclick="completeOrder('${o.id}')" class="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-black rounded-lg shadow-sm">Selesai & Konfirmasi</button>` : ''}
+                            <button onclick="deleteOrder('${o.id}')" class="px-3 py-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 text-[10px] font-bold rounded-lg transition">Hapus</button>
+                        </div>
+                    </div>
+                `).join('') || '<p class="text-xs text-slate-400 text-center py-6">Tidak ada transaksi order.</p>';
+            }
+
+            const containerSetors = document.getElementById('container-setor-cards');
+            if (containerSetors) {
+                const filtered = APP_STATE.setors.filter(s => currentSetorSubTab === 'pending' ? s.status === 'pending' : s.status === 'terima');
+                containerSetors.innerHTML = filtered.map(s => `
+                    <div class="glass-card p-4 space-y-3 border border-slate-200 hover:border-indigo-300 transition shadow-sm">
+                        <div class="flex justify-between items-start pb-2 border-b border-slate-200">
+                            <div>
+                                <h4 class="text-xs font-black text-slate-800">${s.personilName}</h4>
+                                <p class="text-[10px] text-slate-500">${s.date} • Omset: ${formatRp(s.omset)}</p>
+                            </div>
+                            <span class="text-xs font-black text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200">${formatRp(s.nominalSetor)}</span>
+                        </div>
+                        <div class="flex gap-2 pt-1 border-t border-slate-200">
+                            ${currentSetorSubTab === 'pending' ? `<button onclick="acceptSetor('${s.id}')" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black rounded-lg shadow-sm">Terima Setoran Kas</button>` : ''}
+                        </div>
+                    </div>
+                `).join('') || '<p class="text-xs text-slate-400 text-center py-6">Tidak ada setoran masuk.</p>';
+            }
+        }
+
+        function completeOrder(id) {
+            const o = APP_STATE.orders.find(x => x.id === id);
+            if (o) o.status = 'selesai';
+            saveToStorage();
+        }
+
+        function acceptSetor(id) {
+            const s = APP_STATE.setors.find(x => x.id === id);
+            if (s) s.status = 'terima';
+            saveToStorage();
+        }
+
+        function deleteOrder(id) {
+            if (confirm('Hapus transaksi order ini?')) {
+                APP_STATE.orders = APP_STATE.orders.filter(o => o.id !== id);
+                saveToStorage();
+            }
+        }
+
+        /* ================= CART & ORDER PERSONIL ================= */
+        function handleItemSearch(query) {
+            const dropdown = document.getElementById('item-search-results');
+            if (!query.trim()) { dropdown.classList.add('hidden'); return; }
+
+            const matches = APP_STATE.items.filter(i => i.name.toLowerCase().includes(query.toLowerCase()));
+            if (matches.length > 0) {
+                dropdown.innerHTML = matches.map(i => `
+                    <div onclick="selectItemForCart('${i.id}')" class="p-3 border-b border-slate-100 hover:bg-slate-50 cursor-pointer flex justify-between text-xs transition">
+                        <span class="font-bold text-slate-800">${i.name}</span>
+                        <span class="text-emerald-600 font-black">${formatRp(i.price)}</span>
+                    </div>
+                `).join('');
+                dropdown.classList.remove('hidden');
+            } else {
+                dropdown.classList.add('hidden');
+            }
+        }
+
+        function selectItemForCart(id) {
+            const item = APP_STATE.items.find(i => i.id === id);
+            const existing = APP_STATE.selectedCartItems.find(c => c.id === id);
+            if (existing) {
+                existing.qty++;
+            } else {
+                APP_STATE.selectedCartItems.push({ id: item.id, name: item.name, price: item.price, qty: 1 });
+            }
+            document.getElementById('item-search-results').classList.add('hidden');
+            document.getElementById('personil-item-search').value = '';
+            renderCartItems();
+        }
+
+        function renderCartItems() {
+            const container = document.getElementById('selected-items-container');
+            if (APP_STATE.selectedCartItems.length === 0) {
+                container.innerHTML = '<p id="empty-items-placeholder" class="text-xs text-slate-400 text-center py-6">Belum ada item barang yang dipilih.</p>';
+                document.getElementById('summary-total-qty').innerText = '0';
+                document.getElementById('summary-total-price').innerText = 'Rp 0';
+                return;
+            }
+
+            let totalQty = 0;
+            let totalPrice = 0;
+
+            container.innerHTML = APP_STATE.selectedCartItems.map((c, idx) => {
+                totalQty += c.qty;
+                totalPrice += c.price * c.qty;
+                return `
+                    <div class="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200 text-xs shadow-sm">
+                        <div>
+                            <p class="font-black text-slate-800">${c.name}</p>
+                            <p class="text-[10px] text-slate-500">${formatRp(c.price)} / unit</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <input type="number" value="${c.qty}" min="1" onchange="updateCartQty(${idx}, this.value)" class="w-14 p-1.5 border border-slate-200 bg-slate-50 rounded-lg text-center text-xs font-bold text-slate-800">
+                            <button onclick="removeCartItem(${idx})" class="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('summary-total-qty').innerText = totalQty;
+            document.getElementById('summary-total-price').innerText = formatRp(totalPrice);
+        }
+
+        function updateCartQty(idx, val) {
+            APP_STATE.selectedCartItems[idx].qty = parseInt(val) || 1;
+            renderCartItems();
+        }
+
+        function removeCartItem(idx) {
+            APP_STATE.selectedCartItems.splice(idx, 1);
+            renderCartItems();
+        }
+
+        function submitPersonilOrder() {
+            if (APP_STATE.selectedCartItems.length === 0) {
+                showCustomAlert('Pilih minimal 1 item barang!');
+                return;
+            }
+
+            const pData = APP_STATE.currentUser.data;
+            const totalPrice = APP_STATE.selectedCartItems.reduce((a, c) => a + (c.price * c.qty), 0);
+            const dateVal = document.getElementById('personil-order-date').value || new Date().toLocaleString('id-ID');
+
+            const newOrder = {
+                id: Date.now().toString(),
+                personilId: pData.id,
+                personilName: pData.name,
+                date: dateVal,
+                items: [...APP_STATE.selectedCartItems],
+                totalPrice,
+                status: 'checkout'
+            };
+
+            APP_STATE.orders.push(newOrder);
+            saveToStorage();
+            resetOrderForm();
+            showCustomAlert('Order berhasil dikirim ke Pengelola!');
+            navigatePersonil('ringkasan');
+        }
+
+        function resetOrderForm() {
+            APP_STATE.selectedCartItems = [];
+            renderCartItems();
+        }
+
+        /* ================= PERSONIL SETOR FORM ================= */
+        function calculateSetorFormula() {
+            const omset = parseFloat(document.getElementById('personil-setor-omset').value) || 0;
+            const persen = parseFloat(document.getElementById('personil-setor-persen').value) || 0;
+
+            const penghasilan = omset * (persen / 100);
+            const nominalSetor = omset - penghasilan;
+
+            document.getElementById('personil-setor-penghasilan').value = formatRp(penghasilan);
+            document.getElementById('personil-setor-final').value = formatRp(nominalSetor);
+        }
+
+        function submitPersonilSetor() {
+            const omset = parseFloat(document.getElementById('personil-setor-omset').value) || 0;
+            const persen = parseFloat(document.getElementById('personil-setor-persen').value) || 0;
+
+            if (omset <= 0) {
+                showCustomAlert('Masukkan omset penjualan yang valid!');
+                return;
+            }
+
+            const penghasilan = omset * (persen / 100);
+            const nominalSetor = omset - penghasilan;
+            const pData = APP_STATE.currentUser.data;
+
+            const newSetor = {
+                id: Date.now().toString(),
+                personilId: pData.id,
+                personilName: pData.name,
+                date: new Date().toLocaleDateString('id-ID'),
+                timestamp: Date.now(),
+                omset,
+                persen,
+                penghasilan,
+                nominalSetor,
+                status: 'pending'
+            };
+
+            APP_STATE.setors.push(newSetor);
+            saveToStorage();
+            document.getElementById('personil-setor-omset').value = '';
+            showCustomAlert('Konfirmasi setoran berhasil dikirim!');
+            navigatePersonil('ringkasan');
+        }
+
+        /* ================= SETTINGS & MODALS ================= */
+        function openSettingModal(type) {
+            if (type === 'outlet') {
+                showModal(`
+                    <h3 class="text-sm font-black text-slate-800 mb-3">Identitas Outlet</h3>
+                    <div class="space-y-3">
+                        <label class="text-xs font-bold text-slate-700">Nama Outlet / Pos Operasional</label>
+                        <input type="text" id="setting-outlet-input" value="${APP_STATE.settings.outletName}" class="w-full p-3 text-xs border border-slate-200 rounded-xl bg-white text-slate-800 shadow-sm">
+                        <button onclick="saveSettingOutlet()" class="w-full py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-black text-xs rounded-xl shadow-md">Simpan Ubahan</button>
+                    </div>
+                `);
+            } else if (type === 'cloud') {
+                showModal(`
+                    <h3 class="text-sm font-black text-slate-800 mb-3">Integrasi Apps Script Cloud</h3>
+                    <div class="space-y-3 text-xs">
+                        <input type="text" id="setting-gas-url" value="${APP_STATE.settings.gasUrl}" placeholder="https://script.google.com/macros/s/..." class="w-full p-3 border border-slate-200 rounded-xl bg-white text-slate-800 shadow-sm">
+                        <button onclick="showCustomAlert('Simulasi Sinkronisasi Berhasil!')" class="w-full py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-black text-xs rounded-xl shadow-md">Sinkronkan Cloud Data</button>
+                    </div>
+                `);
+            } else if (type === 'batas') {
+                showModal(`
+                    <h3 class="text-sm font-black text-slate-800 mb-3">Batas Limit Operasional</h3>
+                    <div class="space-y-3 text-xs">
+                        <div>
+                            <label class="font-bold text-slate-700">Limit Max Saldo Akhir (Rp)</label>
+                            <input type="number" id="setting-batas-nominal" value="${APP_STATE.settings.batasNominal}" class="w-full mt-1 p-2.5 border border-slate-200 rounded-xl bg-white text-slate-800 shadow-sm">
+                        </div>
+                        <div>
+                            <label class="font-bold text-slate-700">Batas Maksimal Jam Setor (Format WIB 0-23)</label>
+                            <input type="number" id="setting-batas-jam" value="${APP_STATE.settings.batasJamSetor}" class="w-full mt-1 p-2.5 border border-slate-200 rounded-xl bg-white text-slate-800 shadow-sm">
+                        </div>
+                        <button onclick="saveBatasSettings()" class="w-full py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-black rounded-xl shadow-md">Simpan Batas Limit</button>
+                    </div>
+                `);
+            }
+        }
+<!-- ... existing code ... baseline rest ... -->
+        function renderLaporan() {
+            const personilId = document.getElementById('filter-personil-id').value;
+
+            let filteredOrders = APP_STATE.orders;
+            let filteredSetors = APP_STATE.setors;
+
+            if (personilId !== 'ALL') {
+                filteredOrders = filteredOrders.filter(o => o.personilId === personilId);
+                filteredSetors = filteredSetors.filter(s => s.personilId === personilId);
+            }
+
+            document.getElementById('laporan-order-list').innerHTML = filteredOrders.map(o => `
+                <div class="p-3 bg-white rounded-xl border border-slate-200 flex justify-between shadow-sm">
+                    <div>
+                        <p class="font-bold text-slate-800">${o.personilName}</p>
+                        <p class="text-[10px] text-slate-500">${o.date}</p>
+                    </div>
+                    <span class="font-black text-sky-600">${formatRp(o.totalPrice)}</span>
+                </div>
+            `).join('') || '<p class="text-slate-400">Tidak ada data order.</p>';
+
+            document.getElementById('laporan-setor-list').innerHTML = filteredSetors.map(s => `
+                <div class="p-3 bg-white rounded-xl border border-slate-200 flex justify-between shadow-sm">
+                    <div>
+                        <p class="font-bold text-slate-800">${s.personilName}</p>
+                        <p class="text-[10px] text-slate-500">${s.date}</p>
+                    </div>
+                    <span class="font-black text-indigo-600">${formatRp(s.nominalSetor)}</span>
+                </div>
+            `).join('') || '<p class="text-slate-400">Tidak ada data setor.</p>';
+        }
+
+        function showNotifDetail(type) {
+            if (type === 'tidak-setor') {
+                const list = APP_STATE.personils.filter(p => !APP_STATE.setors.some(s => s.personilId === p.id && new Date(s.timestamp).toDateString() === new Date().toDateString()));
+                showModal(`<h3 class="text-sm font-black text-slate-800 mb-3">Personil Belum Setor Hari Ini</h3><div class="space-y-2 text-xs">${list.map(p => `<div class="p-2 border border-slate-200 bg-white rounded-xl shadow-sm">${p.name} - ${p.lapak}</div>`).join('') || 'Semua personil telah melakukan setor!'}</div>`);
+            } else if (type === 'over-limit') {
+                const list = APP_STATE.personils.filter(p => getPersonilSaldo(p.id) > APP_STATE.settings.batasNominal);
+                showModal(`<h3 class="text-sm font-black text-slate-800 mb-3">Personil Saldo Over Limit</h3><div class="space-y-2 text-xs">${list.map(p => `<div class="p-2 border border-slate-200 bg-white rounded-xl shadow-sm flex justify-between"><span>${p.name}</span><span class="font-bold text-rose-600">${formatRp(getPersonilSaldo(p.id))}</span></div>`).join('') || 'Tidak ada personil over limit.'}</div>`);
+            } else if (type === 'personil-aktif') {
+                const list = APP_STATE.personils.filter(p => p.active);
+                showModal(`<h3 class="text-sm font-black text-slate-800 mb-3">Personil Online</h3><div class="space-y-2 text-xs">${list.map(p => `<div class="p-2 border border-slate-200 bg-white rounded-xl shadow-sm flex justify-between"><span>${p.name}</span><span class="text-emerald-600 font-bold">Online</span></div>`).join('') || 'Tidak ada personil online.'}</div>`);
+            }
+        }
+
+        function showDetailModal(type) {
+            if (type === 'saldo-all') {
+                showModal(`<h3 class="text-sm font-black text-slate-800 mb-3">Detail Saldo Semua Personil</h3><div class="space-y-2 text-xs">${APP_STATE.personils.map(p => `<div class="p-2 border border-slate-200 bg-white rounded-xl shadow-sm flex justify-between"><span>${p.name}</span><span class="font-bold text-emerald-600">${formatRp(getPersonilSaldo(p.id))}</span></div>`).join('')}</div>`);
+            } else if (type === 'order-all') {
+                showModal(`<h3 class="text-sm font-black text-slate-800 mb-3">Detail Semua Order</h3><div class="space-y-2 text-xs max-h-60 overflow-y-auto">${APP_STATE.orders.map(o => `<div class="p-2 border border-slate-200 bg-white rounded-xl shadow-sm flex justify-between"><span>${o.personilName} (${o.date})</span><span class="font-bold text-sky-600">${formatRp(o.totalPrice)}</span></div>`).join('')}</div>`);
+            } else if (type === 'setor-all') {
+                showModal(`<h3 class="text-sm font-bold text-slate-800 mb-3">Detail Semua Setoran</h3><div class="space-y-2 text-xs max-h-60 overflow-y-auto">${APP_STATE.setors.map(s => `<div class="p-2 border border-slate-200 bg-white rounded-xl shadow-sm flex justify-between"><span>${s.personilName} (${s.date})</span><span class="font-bold text-indigo-600">${formatRp(s.nominalSetor)}</span></div>`).join('')}</div>`);
+            }
+        }
+
+        /* ================= UTILITIES ================= */
+        function formatRp(val) {
+            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val || 0);
+        }
+
+        function showModal(contentHtml) {
+            document.getElementById('modal-body').innerHTML = contentHtml;
+            document.getElementById('global-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('global-modal').classList.add('hidden');
+        }
+
+        function showCustomAlert(msg) {
+            showModal(`
+                <div class="text-center space-y-4">
+                    <p class="text-xs font-extrabold text-slate-800 leading-relaxed">${msg}</p>
+                    <button onclick="closeModal()" class="px-5 py-2.5 bg-sky-500 hover:bg-sky-600 text-white text-xs font-black rounded-xl shadow-md">OK, Mengerti</button>
+                </div>
+            `);
+        }
+
+        function toggleThemeVisual() {
+            showCustomAlert('Visual theme initialized & optimized for clean bright light glassmorphism.');
+        }
+    </script>
+</body>
+</html>
