@@ -3114,7 +3114,7 @@ document.addEventListener('touchend',function(e){
   const inward=start.edge==='left'?dx>=65:dx<=-65;
   if(inward&&Math.abs(dx)>Math.abs(dy)*1.25){if(e.cancelable)e.preventDefault();jmHandleEdgeSwipe();}
 },{passive:false});
-/* Pasang penjaga sebelum pemulihan sesi; kegagalan pushState tidak menghentikan aplikasi. */
+/* Pasang penjaga sebelum pemulihan sesi ; kegagalan pushState tidak menghentikan aplikasi. */
 jmInstallHistoryGuard();
 restoreSession();
 </script></body></html>
