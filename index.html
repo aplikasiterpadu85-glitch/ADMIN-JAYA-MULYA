@@ -5216,7 +5216,7 @@ function orderEditItemsHTML(items){
    <label>Item saat ini</label>
    <div class="order-edit-fullname" id="editOrderName${idx}">${esc(i.name||'Item')}</div>
    <div class="field search-pop jm-order-edit-search-pop">
-    <input class="jm-order-edit-catalog-filter jm-order-edit-search-input" id="editOrderItemSearch${idx}" type="search" autocomplete="off" placeholder="Cari item untuk mengganti..." oninput="jmSearchOrderEditCatalog(${idx},this.value)">
+    <input class="jm-order-edit-catalog-filter jm-order-edit-search-input" id="editOrderItemSearch${idx}" type="search" autocomplete="off" placeholder="Ganti Item..." oninput="jmSearchOrderEditCatalog(${idx},this.value)">
     <div id="editOrderItemSuggestions${idx}" class="suggestions jm-order-edit-suggestions hidden"></div>
    </div>
    <span>Harga ${rupiah(i.price)}</span>
